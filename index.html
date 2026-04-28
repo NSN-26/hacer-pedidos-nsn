@@ -330,27 +330,25 @@
 //  CONFIGURACIÓN INICIAL — CAMBIAR URL DE GOOGLE APPS SCRIPT
 // ══════════════════════════════════════════════════════════════════════════════
 // IMPORTANTE: Reemplaza esto con la URL real de tu Google Apps Script
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ4isUiGQzNUGQhUyo6KBpg6eJ6UoaCXMrtGSnQxF9cN250kd-pJdd_3rMWDO1sZZj/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxChDFCvd38kANyQeGTELiSOCIOOLThnNee8jBAnCf_g5U_js83A2aTcQt43Fy2xwaS/exec';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  FUNCIONES HELPER PARA FETCH
 // ══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Envía datos al servidor (Google Apps Script) vía POST
- * @param {string} action - Acción a ejecutar (ej: 'getInitialData', 'submitOrder')
- * @param {object} data - Datos a enviar
- * @returns {Promise<object>} Respuesta del servidor
+ * Envía datos al servidor (Google Apps Script) vía POST con form-data
+ * Esto evita el error CORS porque form-data no hace preflight request
  */
 async function apiCall(action, data = {}) {
-  const payload = { action, ...data };
   try {
+    const params = new URLSearchParams();
+    params.append('action', action);
+    params.append('data', JSON.stringify(data));
+
     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
+      body: params
     });
 
     if (!response.ok) {
