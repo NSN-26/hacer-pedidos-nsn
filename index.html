@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos NSN</title>
+<style>
+  :root {
+    --verde:      #2E7D32;
+    --verde-md:   #388E3C;
+    --verde-lgt:  #4CAF50;
+    --verde-pale: #E8F5E9;
+    --gris-bg:    #F0F4F0;
+    --gris-brd:   #DDD;
+    --texto:      #212121;
+    --shadow:     0 2px 12px rgba(0,0,0,0.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gris-bg);color:var(--texto)}
+
+  /* ── Header ── */
+  .header{background:var(--verde);padding:14px 20px;text-align:center;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .header img{height:48px;object-fit:contain;display:block;margin:0 auto 4px}
+  .header h1{color:white;font-size:17px;font-weight:700}
+  .header p{color:#C8E6C9;font-size:12px;margin-top:2px}
+
+  /* ── Steps bar ── */
+  .steps{display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 12px;background:white;border-bottom:1px solid #E0E0E0;flex-wrap:nowrap;overflow-x:auto}
+  .step-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #CCC;color:#999;flex-shrink:0;transition:all .3s}
+  .step-dot.done{border-color:var(--verde-lgt);background:var(--verde-lgt);color:white}
+  .step-dot.active{border-color:var(--verde);background:var(--verde);color:white}
+  .step-line{width:24px;height:2px;background:#CCC;flex-shrink:0;transition:background .3s}
+  .step-line.done{background:var(--verde-lgt)}
+
+  /* ── Screens ── */
+  .screen{display:none}.screen.active{display:block}
+
+  /* ── Container ── */
+  .container{max-width:680px;margin:0 auto;padding:18px 14px}
+
+  /* ── Card ── */
+  .card{background:white;border-radius:12px;padding:22px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+  .card h2{color:var(--verde);font-size:19px;margin-bottom:6px}
+  .card .subtitle{color:#666;font-size:13px;margin-bottom:18px}
+
+  /* ── Form ── */
+  .fg{margin-bottom:15px}
+  label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:5px}
+  input,select,textarea{width:100%;padding:11px 13px;border:1.5px solid var(--gris-brd);border-radius:8px;font-size:15px;transition:border-color .2s;background:white;color:var(--texto)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde-lgt)}
+
+  /* ── Buttons ── */
+  .btn{padding:12px 22px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .2s;width:100%;display:block}
+  .btn-green{background:var(--verde);color:white}
+  .btn-green:hover{background:#1B5E20}
+  .btn-green:disabled{background:#A5D6A7;cursor:not-allowed}
+  .btn-blue{background:#1565C0;color:white}
+  .btn-mp{background:#009EE3;color:white}
+  .btn-back{background:transparent;border:2px solid #CCC;color:#666;margin-bottom:10px}
+
+  /* ── Error ── */
+  .err{color:#C62828;font-size:12px;margin-top:6px}
+
+  /* ── VIP badge ── */
+  .vip{display:inline-flex;align-items:center;gap:6px;background:#FFF8E1;border:1.5px solid #FFA000;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:#E65100;margin-bottom:14px}
+
+  /* ── Info row ── */
+  .info-row{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:var(--verde-pale);border-radius:8px;font-size:13px;color:#1B5E20;margin-bottom:14px}
+
+  /* ── Category grid ── */
+  .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cat-card{border:2px solid var(--gris-brd);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .2s;text-align:center;user-select:none}
+  .cat-card:hover{border-color:var(--verde-lgt);background:var(--verde-pale)}
+  .cat-card.selected{border-color:var(--verde);background:var(--verde-pale)}
+  .cat-emoji{font-size:26px}
+  .cat-name{font-size:15px;font-weight:700;margin:5px 0 2px;color:var(--verde)}
+  .cat-desc{font-size:11px;color:#777}
+  .cat-pct{font-size:17px;font-weight:800;color:#C62828;margin-top:5px}
+
+  /* ── Products ── */
+  .search-bar{width:100%;padding:10px 13px;border:1.5px solid var(--gris-brd);border-radius:8px;font-size:14px;margin-bottom:14px}
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+  .prod-card{border:2px solid #EEEEEE;border-radius:12px;overflow:hidden;transition:all .2s;background:white;cursor:default}
+  .prod-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);border-color:#CCC}
+  .prod-card.in-cart{border-color:var(--verde)}
+  .prod-img{width:100%;aspect-ratio:1;object-fit:cover;background:#F5F5F5;display:block}
+  .prod-no-img{width:100%;aspect-ratio:1;background:#F0F4F0;display:flex;align-items:center;justify-content:center;font-size:38px}
+  .prod-info{padding:9px 10px}
+  .prod-name{font-size:12px;font-weight:600;color:#333;margin-bottom:3px;line-height:1.3}
+  .prod-price{font-size:14px;font-weight:800;color:var(--verde)}
+  .prod-orig{font-size:11px;color:#AAA;text-decoration:line-through}
+  .qty-ctrl{display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 10px;border-top:1px solid #F0F0F0}
+  .qty-btn{width:28px;height:28px;border-radius:50%;border:2px solid var(--verde);background:white;color:var(--verde);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+  .qty-btn:hover{background:var(--verde);color:white}
+  .qty-val{font-size:15px;font-weight:700;min-width:22px;text-align:center}
+
+  /* ── Cart bar ── */
+  .cart-bar{position:fixed;bottom:0;left:0;right:0;background:var(--verde);color:white;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 -3px 12px rgba(0,0,0,.2);z-index:300;transition:transform .3s}
+  .cart-bar.hidden{transform:translateY(100%)}
+  .cart-count{font-size:13px;opacity:.9}
+  .cart-total{font-size:19px;font-weight:800;margin-top:1px}
+  .cart-cta{background:white;color:var(--verde);padding:10px 18px;border-radius:8px;font-weight:700;font-size:14px;border:none;cursor:pointer;white-space:nowrap}
+
+  /* ── Summary table ── */
+  .sum-table{width:100%;border-collapse:collapse;font-size:13px}
+  .sum-table th{background:var(--verde);color:white;padding:9px 10px;text-align:left}
+  .sum-table td{padding:9px 10px;border-bottom:1px solid #F0F0F0}
+  .sum-table tfoot td{font-weight:700;font-size:15px;background:var(--verde-pale)}
+
+  /* ── Client summary grid ── */
+  .sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:14px}
+  .sum-grid div{padding:8px 10px;background:var(--gris-bg);border-radius:8px}
+  .sum-grid div strong{display:block;font-size:11px;color:#888;margin-bottom:2px}
+
+  /* ── Loading ── */
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px}
+  .spinner{width:46px;height:46px;border:4px solid var(--verde-pale);border-top-color:var(--verde);border-radius:50%;animation:spin .75s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Success ── */
+  .success-icon{width:76px;height:76px;background:var(--verde-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 18px}
+  .btn-space{margin-bottom:10px}
+
+  /* ─────────────────────────────────────────────
+     TOAST — reemplaza los alerts feos del navegador
+     ───────────────────────────────────────────── */
+  .toast{
+    position:fixed;top:20px;left:50%;
+    transform:translateX(-50%) translateY(-120px);
+    background:white;border-radius:12px;padding:14px 18px;
+    box-shadow:0 6px 24px rgba(0,0,0,0.18);
+    z-index:9999;display:flex;align-items:center;gap:12px;
+    font-size:14px;font-weight:500;color:#333;
+    max-width:90%;min-width:240px;
+    border-left:5px solid var(--verde);
+    opacity:0;pointer-events:none;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+  .toast.error{border-left-color:#C62828}
+  .toast.warn{border-left-color:#F57C00}
+  .toast.success{border-left-color:var(--verde)}
+  .toast.info{border-left-color:#1565C0}
+  .toast-icon{font-size:22px;line-height:1;flex-shrink:0}
+  .toast-msg{flex:1;line-height:1.35}
+
+  @media(max-width:420px){
+    .cat-grid{grid-template-columns:1fr 1fr}
+    .prod-grid{grid-template-columns:repeat(2,1fr)}
+    .sum-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ════ TOAST (notificaciones propias) ════ -->
+<div id="toast" class="toast" role="status" aria-live="polite">
+  <span class="toast-icon" id="toastIcon">ℹ️</span>
+  <span class="toast-msg" id="toastMsg"></span>
+</div>
+
+<!-- ════ HEADER ════ -->
+<div class="header" id="mainHeader">
+  <img id="logoImg" src="" alt="NSN" style="display:none">
+  <h1 id="bizName">Productos y Desarrollos NSN</h1>
+  <p id="bizPhone"></p>
+</div>
+
+<!-- ════ STEPS BAR ════ -->
+<div class="steps" id="stepsBar" style="display:none">
+  <div class="step-dot active" id="dot1">1</div>
+  <div class="step-line" id="line1"></div>
+  <div class="step-dot" id="dot2">2</div>
+  <div class="step-line" id="line2"></div>
+  <div class="step-dot" id="dot3">3</div>
+  <div class="step-line" id="line3"></div>
+  <div class="step-dot" id="dot4">4</div>
+  <div class="step-line" id="line4"></div>
+  <div class="step-dot" id="dot5">5</div>
+</div>
+
+<!-- ════ CARGANDO ════ -->
+<div class="screen active" id="screenLoading">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p style="color:#666;font-size:15px">Cargando catálogo…</p>
+  </div>
+</div>
+
+<!-- ════ STEP 1 · EMAIL ════ -->
+<div class="screen" id="screen1">
+  <div class="container">
+    <div class="card">
+      <h2>👋 ¡Bienvenido!</h2>
+      <p class="subtitle">Ingresa tu correo electrónico para comenzar tu pedido.</p>
+      <div class="fg">
+        <label for="emailInput">Correo electrónico</label>
+        <input type="email" id="emailInput" placeholder="tu@correo.com" autocomplete="email">
+        <div class="err" id="emailErr"></div>
+      </div>
+      <button class="btn btn-green" id="btnEmail">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ STEP 2 · CATEGORÍA ════ -->
+<div class="screen" id="screen2">
+  <div class="container">
+    <div class="card">
+      <h2>🏷️ Categoría de Descuento</h2>
+      <p class="subtitle">Selecciona tu nivel para ver los precios correspondientes.</p>
+
+      <div class="vip" id="vipAlert" style="display:none">
+        ⭐ Cliente frecuente detectado — categoría asignada automáticamente
+      </div>
+
+      <div class="cat-grid" id="catGrid"></div>
+
+      <div style="margin-top:18px">
+        <button class="btn btn-back" id="btnBackCat">← Atrás</button>
+        <button class="btn btn-green" id="btnCat">Continuar →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ STEP 3 · PRODUCTOS ════ -->
+<div class="screen" id="screen3">
+  <div class="container" style="padding-bottom:86px">
+    <div class="card" style="padding:16px">
+      <h2>🛍️ Catálogo de Productos</h2>
+      <p class="subtitle" id="catLabel">Selecciona los productos y las cantidades.</p>
+      <input type="text" class="search-bar" id="searchBar" placeholder="🔍 Buscar producto…">
+      <div class="prod-grid" id="prodGrid"></div>
+    </div>
+  </div>
+
+  <div class="cart-bar hidden" id="cartBar">
+    <div>
+      <div class="cart-count" id="cartCount">0 productos</div>
+      <div class="cart-total" id="cartTotal">$0.00</div>
+    </div>
+    <button class="cart-cta" id="btnToInfo">Ver pedido →</button>
+  </div>
+</div>
+
+<!-- ════ STEP 4 · DATOS DEL CLIENTE ════ -->
+<div class="screen" id="screen4">
+  <div class="container">
+    <div class="card">
+      <h2>📋 Tus Datos</h2>
+      <p class="subtitle">Ingresa tu información para el pedido.</p>
+
+      <div class="fg">
+        <label>Nombre completo</label>
+        <input type="text" id="inNombre" placeholder="Nombre y apellidos" autocomplete="name">
+      </div>
+      <div class="fg">
+        <label>Teléfono / WhatsApp</label>
+        <input type="tel" id="inTel" placeholder="+52 33 1234 5678" autocomplete="tel">
+      </div>
+      <div class="fg">
+        <label>Dirección de entrega</label>
+        <textarea id="inDir" rows="3" placeholder="Calle, número, colonia, ciudad, C.P." autocomplete="street-address"></textarea>
+      </div>
+
+      <div class="err" id="infoErr"></div>
+      <button class="btn btn-back" id="btnBackInfo">← Atrás</button>
+      <button class="btn btn-green" id="btnToSummary">Ver resumen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ STEP 5 · RESUMEN Y ENVÍO ════ -->
+<div class="screen" id="screen5">
+  <div class="container">
+    <div class="card">
+      <h2>📄 Resumen del Pedido</h2>
+
+      <div class="info-row">📧 <span id="sumEmail"></span></div>
+      <div class="sum-grid" id="sumGrid"></div>
+
+      <table class="sum-table">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th></tr></thead>
+        <tbody id="sumItems"></tbody>
+        <tfoot><tr><td colspan="3" style="text-align:right">TOTAL</td><td id="sumTotal"></td></tr></tfoot>
+      </table>
+
+      <div style="margin-top:18px">
+        <div class="err" id="submitErr"></div>
+        <button class="btn btn-back" id="btnBackSum">← Atrás</button>
+        <button class="btn btn-green" id="btnSubmit">✅ Confirmar y Enviar Pedido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ENVIANDO ════ -->
+<div class="screen" id="screenSending">
+  <div class="loading">
+    <div class="spinner"></div>
+    <p style="color:#444;font-weight:600;font-size:15px">Procesando tu pedido…</p>
+    <p style="color:#888;font-size:13px">Generando PDF y enviando confirmación.</p>
+  </div>
+</div>
+
+<!-- ════ ÉXITO ════ -->
+<div class="screen" id="screenOk">
+  <div class="container">
+    <div class="card" style="text-align:center">
+      <div class="success-icon">✅</div>
+      <h2 style="font-size:22px">¡Pedido Confirmado!</h2>
+      <p style="color:#666;margin:10px 0 22px">Tu pedido <strong id="okNum"></strong> fue enviado.<br>Recibirás un correo de confirmación.</p>
+
+      <button class="btn btn-blue btn-space" id="btnPDF">📄 Descargar PDF del Pedido</button>
+
+      <div id="mpSection" style="display:none">
+        <p style="margin:14px 0 8px;font-size:13px;color:#555">¿Quieres realizar tu pago ahora?</p>
+        <button class="btn btn-mp" id="btnPay">💳 Pagar con MercadoPago</button>
+      </div>
+
+      <p style="margin-top:20px;font-size:12px;color:#999">¿Dudas? Contáctanos al <strong id="okPhone"></strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ════ JAVASCRIPT ════ -->
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  CONFIGURACIÓN INICIAL — CAMBIAR URL DE GOOGLE APPS SCRIPT
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORTANTE: Reemplaza esto con la URL real de tu Google Apps Script
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ4isUiGQzNUGQhUyo6KBpg6eJ6UoaCXMrtGSnQxF9cN250kd-pJdd_3rMWDO1sZZj/exec';
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  FUNCIONES HELPER PARA FETCH
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Envía datos al servidor (Google Apps Script) vía POST
+ * @param {string} action - Acción a ejecutar (ej: 'getInitialData', 'submitOrder')
+ * @param {object} data - Datos a enviar
+ * @returns {Promise<object>} Respuesta del servidor
+ */
+async function apiCall(action, data = {}) {
+  const payload = { action, ...data };
+  try {
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('apiCall error:', error);
+    throw error;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  SISTEMA DE TOAST — reemplaza alert() nativo
+// ─────────────────────────────────────────────
+const TOAST_ICONS = {
+  success: '✅',
+  error:   '⚠️',
+  warn:    '⚠️',
+  info:    'ℹ️'
+};
+
+let _toastTimer = null;
+function showToast(message, type, duration) {
+  type     = type     || 'info';
+  duration = duration || 3500;
+  const el   = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const msg  = document.getElementById('toastMsg');
+
+  icon.textContent = TOAST_ICONS[type] || TOAST_ICONS.info;
+  msg.textContent  = message;
+  el.className = 'toast show ' + type;
+
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ─────────────────────────────────────────────
+//  ESTADO GLOBAL
+// ─────────────────────────────────────────────
+const S = {
+  step: 0, email: '', categoria: '', nombre: '', telefono: '', direccion: '',
+  isVip: false, products: [], discounts: {}, cart: {},
+  orderNum: null, pdfB64: null, payLink: null
+};
+
+const CATS = [
+  { id:'Minorista', emoji:'🛒', desc:'Inversión mínima $1,333' },
+  { id:'Plata',     emoji:'🥈', desc:'Inversión inicial desde $4,500' },
+  { id:'Oro',       emoji:'🥇', desc:'Inversión inicial desde $12,000' },
+  { id:'Diamante',  emoji:'💎', desc:'Inversión inicial desde $20,000' },
+];
+
+// ─────────────────────────────────────────────
+//  INICIALIZACIÓN
+// ─────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  // Validar que URL esté configurada
+  if (GOOGLE_APPS_SCRIPT_URL === 'TU_URL_DE_GOOGLE_EXEC_AQUI') {
+    showToast('❌ ERROR: Configura GOOGLE_APPS_SCRIPT_URL en el código HTML', 'error', 5000);
+    return;
+  }
+
+  show('screenLoading');
+  
+  try {
+    const d = await apiCall('getInitialData');
+    
+    if (!d.success) {
+      showToast('Error al cargar datos: ' + d.error, 'error', 5000);
+      return;
+    }
+
+    S.products  = d.products;
+    S.discounts = d.discounts;
+    
+    if (d.logoB64) {
+      const img = $('logoImg');
+      img.src = d.logoB64;
+      img.style.display = 'block';
+    }
+    
+    if (d.business) {
+      $('bizName').textContent  = d.business.name;
+      $('bizPhone').textContent = d.business.phone;
+      $('okPhone').textContent  = d.business.phone;
+    }
+    
+    buildCats();
+    goStep(1);
+  } catch (error) {
+    console.error('Error cargando datos:', error);
+    showToast('Error de conexión: ' + error.message, 'error', 5000);
+  }
+});
+
+// ─────────────────────────────────────────────
+//  NAVEGACIÓN
+// ─────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function goStep(n) {
+  S.step = n;
+  const bar = $('stepsBar');
+  bar.style.display = (n >= 1 && n <= 5) ? 'flex' : 'none';
+
+  for (let i = 1; i <= 5; i++) {
+    const dot  = $('dot'+i);
+    dot.className = i < n ? 'step-dot done' : i === n ? 'step-dot active' : 'step-dot';
+    dot.textContent = i < n ? '✓' : i;
+    if (i < 5) $('line'+i).className = i < n ? 'step-line done' : 'step-line';
+  }
+  show('screen' + n);
+}
+
+function $(id) { return document.getElementById(id); }
+
+// ─────────────────────────────────────────────
+//  STEP 1 — EMAIL
+// ─────────────────────────────────────────────
+$('emailInput').addEventListener('keydown', e => { if (e.key==='Enter') $('btnEmail').click(); });
+
+$('btnEmail').addEventListener('click', async function() {
+  const email = $('emailInput').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    $('emailErr').textContent = 'Por favor ingresa un correo electrónico válido.';
+    return;
+  }
+  $('emailErr').textContent = '';
+  S.email = email;
+  this.disabled = true;
+  this.textContent = 'Verificando…';
+  const btn = this;
+
+  try {
+    const d = await apiCall('checkClientEmail', { email });
+    
+    if (d.found) {
+      S.isVip = true;
+      S.categoria = d.categoria;
+      if (d.nombre)    $('inNombre').value = d.nombre;
+      if (d.telefono)  $('inTel').value    = d.telefono;
+      if (d.direccion) $('inDir').value    = d.direccion;
+      showToast('¡Bienvenido de nuevo, ' + (d.nombre || 'cliente') + '!', 'success');
+    } else {
+      S.isVip = false;
+      S.categoria = '';
+    }
+    updateCatUI();
+    goStep(2);
+  } catch (error) {
+    console.error('checkClientEmail error:', error);
+    S.isVip = false;
+    goStep(2);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continuar →';
+  }
+});
+
+// ─────────────────────────────────────────────
+//  STEP 2 — CATEGORÍA
+// ─────────────────────────────────────────────
+function buildCats() {
+  const grid = $('catGrid');
+  grid.innerHTML = '';
+  CATS.forEach(cat => {
+    const disc = S.discounts[cat.id] || 0;
+    const pct  = Math.round(disc * 100);
+    const div  = document.createElement('div');
+    div.className = 'cat-card';
+    div.dataset.cat = cat.id;
+    div.innerHTML = `<div class="cat-emoji">${cat.emoji}</div>
+      <div class="cat-name">${cat.id}</div>
+      <div class="cat-desc">${cat.desc}</div>
+      <div class="cat-pct">${pct}% de descuento</div>`;
+    div.addEventListener('click', function() {
+      document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+      this.classList.add('selected');
+      S.categoria = this.dataset.cat;
+    });
+    grid.appendChild(div);
+  });
+}
+
+function updateCatUI() {
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+  if (S.isVip && S.categoria) {
+    $('vipAlert').style.display = 'inline-flex';
+    const card = document.querySelector(`.cat-card[data-cat="${S.categoria}"]`);
+    if (card) card.classList.add('selected');
+  } else {
+    $('vipAlert').style.display = 'none';
+  }
+}
+
+$('btnBackCat').addEventListener('click', () => goStep(1));
+$('btnCat').addEventListener('click', () => {
+  if (!S.categoria) {
+    showToast('Por favor selecciona una categoría.', 'warn');
+    return;
+  }
+  buildProds();
+  const disc = S.discounts[S.categoria] || 0;
+  $('catLabel').textContent = `Categoría: ${S.categoria} (${Math.round(disc*100)}% de descuento)`;
+  goStep(3);
+});
+
+// ─────────────────────────────────────────────
+//  STEP 3 — PRODUCTOS
+// ─────────────────────────────────────────────
+function precio(p) {
+  return p.precioBase * (1 - (S.discounts[S.categoria] || 0));
+}
+
+function buildProds() {
+  const grid = $('prodGrid');
+  grid.innerHTML = '';
+  S.products.forEach(p => grid.appendChild(mkCard(p)));
+  updCart();
+}
+
+function mkCard(p) {
+  const card = document.createElement('div');
+  card.className = 'prod-card';
+  card.id = 'pc-'+p.id;
+  card.dataset.name = p.nombre.toLowerCase();
+  const qty = S.cart[p.id] || 0;
+  if (qty > 0) card.classList.add('in-cart');
+  const pr = precio(p);
+  card.innerHTML = p.fotoUrl
+    ? `<img class="prod-img" src="${p.fotoUrl}" alt="${p.nombre}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">\
+       <div class="prod-no-img" style="display:none">💊</div>`
+    : `<div class="prod-no-img">💊</div>`;
+  card.innerHTML += `
+    <div class="prod-info">
+      <div class="prod-name">${p.nombre}</div>
+      <div class="prod-price">$${pr.toFixed(2)}</div>
+      <div class="prod-orig">Base: $${p.precioBase.toFixed(2)}</div>
+    </div>
+    <div class="qty-ctrl">
+      <button class="qty-btn" onclick="chgQty(${p.id},-1)">−</button>
+      <span class="qty-val" id="qv-${p.id}">${qty}</span>
+      <button class="qty-btn" onclick="chgQty(${p.id},1)">+</button>
+    </div>`;
+  return card;
+}
+
+function chgQty(id, d) {
+  const cur = S.cart[id] || 0;
+  const nxt = Math.max(0, cur + d);
+  nxt === 0 ? delete S.cart[id] : (S.cart[id] = nxt);
+  const el = $('qv-'+id);
+  if (el) el.textContent = nxt;
+  const card = $('pc-'+id);
+  if (card) nxt > 0 ? card.classList.add('in-cart') : card.classList.remove('in-cart');
+  updCart();
+}
+
+function cartQty()   { return Object.values(S.cart).reduce((a,b)=>a+b,0); }
+function cartTotal() {
+  return Object.entries(S.cart).reduce((t,[id,q]) => {
+    const p = S.products.find(x => x.id == id);
+    return t + (p ? precio(p)*q : 0);
+  }, 0);
+}
+
+function updCart() {
+  const q = cartQty(), tot = cartTotal(), bar = $('cartBar');
+  if (q > 0) {
+    bar.classList.remove('hidden');
+    $('cartCount').textContent = q + ' producto' + (q!==1?'s':'');
+    $('cartTotal').textContent = '$' + tot.toFixed(2);
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+$('searchBar').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.prod-card').forEach(c => {
+    c.style.display = (c.dataset.name||'').includes(q) ? '' : 'none';
+  });
+});
+
+$('btnToInfo').addEventListener('click', () => {
+  if (cartQty() === 0) {
+    showToast('Selecciona al menos un producto para continuar.', 'warn');
+    return;
+  }
+  goStep(4);
+});
+
+// ─────────────────────────────────────────────
+//  STEP 4 — DATOS DEL CLIENTE
+// ─────────────────────────────────────────────
+$('btnBackInfo').addEventListener('click', () => goStep(3));
+$('btnToSummary').addEventListener('click', () => {
+  const nombre   = $('inNombre').value.trim();
+  const telefono = $('inTel').value.trim();
+  const dir      = $('inDir').value.trim();
+  if (!nombre || !telefono || !dir) {
+    $('infoErr').textContent = 'Por favor completa todos los campos.';
+    showToast('Por favor completa todos los campos.', 'warn');
+    return;
+  }
+  $('infoErr').textContent = '';
+  S.nombre = nombre;
+  S.telefono = telefono;
+  S.direccion = dir;
+  buildSummary();
+  goStep(5);
+});
+
+// ─────────────────────────────────────────────
+//  STEP 5 — RESUMEN
+// ─────────────────────────────────────────────
+function buildSummary() {
+  $('sumEmail').textContent = S.email;
+  $('sumGrid').innerHTML = `
+    <div><strong>Nombre</strong>${S.nombre}</div>
+    <div><strong>Categoría</strong>${S.categoria}</div>
+    <div><strong>Teléfono</strong>${S.telefono}</div>
+    <div><strong>Dirección</strong>${S.direccion}</div>`;
+
+  const tbody = $('sumItems');
+  tbody.innerHTML = '';
+  let total = 0;
+  Object.entries(S.cart).forEach(([id,qty]) => {
+    const p = S.products.find(x => x.id == id);
+    if (!p) return;
+    const pr = precio(p), sub = pr*qty;
+    total += sub;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.nombre}</td><td style="text-align:center">${qty}</td>
+      <td style="text-align:right">$${pr.toFixed(2)}</td>
+      <td style="text-align:right">$${sub.toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+  $('sumTotal').textContent = '$' + total.toFixed(2) + ' MXN';
+}
+
+$('btnBackSum').addEventListener('click', () => goStep(4));
+$('btnSubmit').addEventListener('click', async function() {
+  const items = Object.entries(S.cart).map(([id,qty]) => {
+    const p = S.products.find(x => x.id == id);
+    const pr = precio(p);
+    return {
+      nombre: p.nombre,
+      cantidad: qty,
+      precioUnitario: pr,
+      subtotal: pr*qty
+    };
+  });
+
+  const orderData = {
+    email: S.email,
+    nombre: S.nombre,
+    telefono: S.telefono,
+    direccion: S.direccion,
+    categoria: S.categoria,
+    items
+  };
+
+  $('stepsBar').style.display = 'none';
+  show('screenSending');
+
+  try {
+    const res = await apiCall('submitOrder', { orderData });
+
+    if (!res.success) {
+      $('stepsBar').style.display = 'flex';
+      goStep(5);
+      $('submitErr').textContent = 'Error: ' + res.error;
+      showToast('No se pudo procesar el pedido. Intenta de nuevo.', 'error', 5000);
+      return;
+    }
+
+    S.orderNum = res.orderNumber;
+    S.pdfB64 = res.pdfBase64;
+    S.payLink = res.paymentLink;
+    $('okNum').textContent = '#' + String(res.orderNumber).padStart(4,'0');
+
+    if (res.paymentLink) {
+      $('mpSection').style.display = 'block';
+      $('btnPay').onclick = () => window.open(res.paymentLink, '_blank');
+    }
+
+    show('screenOk');
+    showToast('¡Pedido enviado con éxito!', 'success');
+  } catch (error) {
+    console.error('submitOrder error:', error);
+    $('stepsBar').style.display = 'flex';
+    goStep(5);
+    $('submitErr').textContent = 'Error de conexión: ' + error.message;
+    showToast('Error de conexión. Verifica tu internet.', 'error', 5000);
+  }
+});
+
+// ─────────────────────────────────────────────
+//  DESCARGAR PDF
+// ─────────────────────────────────────────────
+$('btnPDF').addEventListener('click', () => {
+  if (!S.pdfB64) {
+    showToast('PDF no disponible en este momento.', 'error');
+    return;
+  }
+  const bytes = atob(S.pdfB64);
+  const arr   = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type:'application/pdf' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'Pedido_' + String(S.orderNum).padStart(4,'0') + '_NSN.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Descargando PDF…', 'info', 2000);
+});
+</script>
+</body>
+</html>
